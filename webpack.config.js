@@ -5,7 +5,8 @@ module.exports = {
   mode: 'production',
   entry: {
     popup: './src/popup/popup.js',
-    content: './src/content/content.js'
+    content: './src/content/content.js',
+    background: './src/background/background.js'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -29,8 +30,8 @@ module.exports = {
     new CopyPlugin({
       patterns: [
         { from: 'src/manifest.json', to: 'manifest.json' },
-        { from: 'src/popup/popup.html', to: 'popup.html' },
-        { from: 'src/popup/popup.css', to: 'styles.css' },
+        { from: 'src/popup/popup.html', to: 'popup/popup.html' },
+        { from: 'src/popup/popup.css', to: 'popup/styles.css' },
         { from: 'public/images', to: 'images' }
       ]
     })

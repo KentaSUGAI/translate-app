@@ -101,9 +101,9 @@ function addTranslationToggle(originalState) {
 // DOMの読み込み完了後に翻訳を開始
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    const { apiKey } = await chrome.storage.sync.get('apiKey');
-    if (apiKey) {
-      await translatePage(apiKey);
+    const { geminiApiKey } = await chrome.storage.sync.get('geminiApiKey');
+    if (geminiApiKey) {
+      await translatePage(geminiApiKey);
     }
   } catch (error) {
     console.error('初期化エラー:', error);
