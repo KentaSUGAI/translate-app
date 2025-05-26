@@ -12,23 +12,28 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 
 async function translatePage(apiKey) {
   try {
-    // 翻訳中のローディング表示
-    showLoadingIndicator();
+    // 翻訳中のプログレス表示
+    showProgressIndicator();
     
     // 翻訳前の状態を保存
     const originalState = saveOriginalState();
     
-    // 翻訳を実行
-    await translateHTMLContent(document.body, apiKey);
+    // プログレス更新コールバック
+    const onProgress = (progress) => {
+      updateProgressIndicator(progress);
+    };
     
-    // ローディング表示を隠す
-    hideLoadingIndicator();
+    // 翻訳を実行（インクリメンタル反映付き）
+    await translateHTMLContent(document.body, apiKey, onProgress);
+    
+    // プログレス表示を隠す
+    hideProgressIndicator();
     
     // 翻訳切り替えボタンを追加
     addTranslationToggle(originalState);
   } catch (error) {
     console.error('翻訳エラー:', error);
-    hideLoadingIndicator();
+    hideProgressIndicator();
     throw error;
   }
 }
@@ -132,20 +137,23 @@ function addTranslationToggle(originalState) {
   document.body.appendChild(toggleButton);
 }
 
-// ローディングインジケーターの表示
-function showLoadingIndicator() {
-  // 既存のローディング表示があれば削除
-  const existingLoader = document.getElementById('translation-loader');
-  if (existingLoader) {
-    existingLoader.remove();
+// プログレスインジケーターの表示
+function showProgressIndicator() {
+  // 既存の表示があれば削除
+  const existingIndicator = document.getElementById('translation-progress');
+  if (existingIndicator) {
+    existingIndicator.remove();
   }
 
-  const loader = document.createElement('div');
-  loader.id = 'translation-loader';
-  loader.innerHTML = `
+  const indicator = document.createElement('div');
+  indicator.id = 'translation-progress';
+  indicator.innerHTML = `
     <div style="display: flex; align-items: center; gap: 8px;">
       <div class="spinner"></div>
-      <span>翻訳中...</span>
+      <span id="progress-text">翻訳中...</span>
+    </div>
+    <div id="progress-bar-container" style="margin-top: 8px; width: 120px; height: 4px; background-color: #e0e0e0; border-radius: 2px; overflow: hidden;">
+      <div id="progress-bar" style="height: 100%; background-color: #0070f3; width: 0%; transition: width 0.3s ease;"></div>
     </div>
     <style>
       .spinner {
@@ -163,7 +171,7 @@ function showLoadingIndicator() {
     </style>
   `;
   
-  Object.assign(loader.style, {
+  Object.assign(indicator.style, {
     position: 'fixed',
     top: '20px',
     right: '20px',
@@ -177,18 +185,34 @@ function showLoadingIndicator() {
     fontSize: '14px',
     fontWeight: '500',
     fontFamily: 'system-ui, -apple-system, sans-serif',
-    minWidth: '120px',
+    minWidth: '140px',
     textAlign: 'center'
   });
 
-  document.body.appendChild(loader);
+  document.body.appendChild(indicator);
 }
 
-// ローディングインジケーターの非表示
-function hideLoadingIndicator() {
-  const loader = document.getElementById('translation-loader');
-  if (loader) {
-    loader.remove();
+// プログレスインジケーターの更新
+function updateProgressIndicator(progress) {
+  const progressText = document.getElementById('progress-text');
+  const progressBar = document.getElementById('progress-bar');
+  
+  if (progressText && progressBar) {
+    progressText.textContent = `翻訳中... ${progress.percentage}%`;
+    progressBar.style.width = `${progress.percentage}%`;
+    
+    if (progress.error) {
+      progressText.textContent = `エラーあり ${progress.percentage}%`;
+      progressText.style.color = '#d32f2f';
+    }
+  }
+}
+
+// プログレスインジケーターの非表示
+function hideProgressIndicator() {
+  const indicator = document.getElementById('translation-progress');
+  if (indicator) {
+    indicator.remove();
   }
 }
 
