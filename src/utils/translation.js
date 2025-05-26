@@ -1,5 +1,5 @@
 export async function translateWithGemini(text, apiKey) {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -50,7 +50,7 @@ export function splitTextIntoChunks(text, chunkSize) {
   return chunks;
 }
 
-export async function translateHTMLContent(element, apiKey) {
+export async function translateHTMLContent(element, apiKey, onProgress = null) {
   // テキストノードを収集
   const textNodes = [];
   const walker = document.createTreeWalker(
@@ -105,7 +105,10 @@ export async function translateHTMLContent(element, apiKey) {
     batches.push(currentBatch);
   }
 
-  // バッチごとに翻訳
+  let completedBatches = 0;
+  const totalBatches = batches.length;
+
+  // バッチごとに翻訳（プログレス通知付き）
   for (const batch of batches) {
     try {
       const batchText = batch.join('\n---SEPARATOR---\n');
@@ -119,19 +122,42 @@ export async function translateHTMLContent(element, apiKey) {
           translationCache.set(originalText, translatedTexts[index].trim());
         }
       });
+
+      // 即座に翻訳済みテキストを適用（インクリメンタル反映）
+      textNodes.forEach(({node, text}) => {
+        const translatedText = translationCache.get(text);
+        if (translatedText && !node._translatedText) {
+          node._translatedText = translatedText; // 切り替え用に保存
+          node.textContent = translatedText;
+        }
+      });
+
+      completedBatches++;
+      
+      // プログレス通知
+      if (onProgress) {
+        onProgress({
+          completed: completedBatches,
+          total: totalBatches,
+          percentage: Math.round((completedBatches / totalBatches) * 100)
+        });
+      }
+
     } catch (error) {
       console.error('バッチ翻訳エラー:', error);
+      completedBatches++;
+      
+      // エラー時もプログレス通知
+      if (onProgress) {
+        onProgress({
+          completed: completedBatches,
+          total: totalBatches,
+          percentage: Math.round((completedBatches / totalBatches) * 100),
+          error: error.message
+        });
+      }
     }
   }
-
-  // 翻訳結果を適用
-  textNodes.forEach(({node, text}) => {
-    const translatedText = translationCache.get(text);
-    if (translatedText) {
-      node._translatedText = translatedText; // 切り替え用に保存
-      node.textContent = translatedText;
-    }
-  });
 }
 
 function isInScriptOrStyle(node) {
