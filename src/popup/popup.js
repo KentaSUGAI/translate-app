@@ -38,21 +38,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 翻訳ボタンのイベントリスナー
   document.getElementById('translate').addEventListener('click', async function() {
+    const translateButton = document.getElementById('translate');
+    const statusDiv = document.getElementById('status');
+    
     try {
       const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
       
       if (!tab) {
-        document.getElementById('status').textContent = 'アクティブなタブが見つかりません';
+        statusDiv.textContent = 'アクティブなタブが見つかりません';
         return;
       }
 
       const data = await chrome.storage.sync.get('geminiApiKey');
       if (!data.geminiApiKey) {
-        document.getElementById('status').textContent = 'APIキーを設定してください';
+        statusDiv.textContent = 'APIキーを設定してください';
         return;
       }
 
-      document.getElementById('status').textContent = '翻訳中...';
+      // ボタンを無効化して、ローディング状態を表示
+      translateButton.disabled = true;
+      translateButton.textContent = '翻訳中...';
+      statusDiv.innerHTML = '<div style="display: flex; align-items: center; gap: 8px;"><div class="popup-spinner"></div><span>ページを翻訳しています...</span></div>';
 
       // コンテンツスクリプトが注入されていることを確認
       await chrome.scripting.executeScript({
@@ -67,13 +73,18 @@ document.addEventListener('DOMContentLoaded', function() {
       });
 
       if (response && response.status === 'success') {
-        document.getElementById('status').textContent = '翻訳が完了しました';
+        statusDiv.textContent = '翻訳が完了しました！ページで切り替えボタンをご確認ください。';
+        translateButton.textContent = '再翻訳';
       } else {
-        document.getElementById('status').textContent = '翻訳に失敗しました: ' + (response ? response.error : '不明なエラー');
+        statusDiv.textContent = '翻訳に失敗しました: ' + (response ? response.error : '不明なエラー');
+        translateButton.textContent = '現在のページを翻訳';
       }
     } catch (error) {
       console.error('Error:', error);
-      document.getElementById('status').textContent = '翻訳に失敗しました: ' + error.message;
+      statusDiv.textContent = '翻訳に失敗しました: ' + error.message;
+      translateButton.textContent = '現在のページを翻訳';
+    } finally {
+      translateButton.disabled = false;
     }
   });
 });
